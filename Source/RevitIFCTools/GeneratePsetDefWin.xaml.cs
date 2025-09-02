@@ -104,120 +104,139 @@ namespace RevitIFCTools
          if (string.IsNullOrEmpty(textBox_PSDSourceDir.Text) || string.IsNullOrEmpty(textBox_OutputFile.Text))
             return;
 
-         var psdFolders = GetPsdOrLexicalFolders(textBox_PSDSourceDir.Text);
-         
-         var qtoFolders = new DirectoryInfo(textBox_PSDSourceDir.Text).GetDirectories("qto", SearchOption.AllDirectories);
-         var combinedFolders = psdFolders.Concat(qtoFolders);
-
-         string dirName = Path.GetDirectoryName(textBox_OutputFile.Text);
-         string outFileName = Path.GetFileNameWithoutExtension(textBox_OutputFile.Text);
-         string penumFileName = Path.Combine(dirName, outFileName);
-
-         // Collect all Pset definition for psd folders
-         Dictionary<ItemsInPsetQtoDefs, string> keywordsToProcess = PsetOrQto.PsetOrQtoDefItems[PsetOrQtoSetEnum.PROPERTYSET];
-         HashSet<string> IfcSchemaProcessed = new HashSet<string>();
-         foreach (DirectoryInfo psd in combinedFolders)
+         try
          {
-            string schemaFolder = psd.FullName.Remove(0, textBox_PSDSourceDir.Text.Length + 1).Split('\\')[0];
+            var psdFolders = GetPsdOrLexicalFolders(textBox_PSDSourceDir.Text);
+            
+            var qtoFolders = new DirectoryInfo(textBox_PSDSourceDir.Text).GetDirectories("qto", SearchOption.AllDirectories);
+            var combinedFolders = psdFolders.Concat(qtoFolders);
 
-            logF.WriteLine("\r\n*** Processing " + schemaFolder);
-            foreach (DirectoryInfo subDir in psd.GetDirectories())
+            string dirName = Path.GetDirectoryName(textBox_OutputFile.Text);
+            string outFileName = Path.GetFileNameWithoutExtension(textBox_OutputFile.Text);
+            string penumFileName = Path.Combine(dirName, outFileName);
+
+            // Collect all Pset definition for psd folders
+            Dictionary<ItemsInPsetQtoDefs, string> keywordsToProcess = PsetOrQto.PsetOrQtoDefItems[PsetOrQtoSetEnum.PROPERTYSET];
+            HashSet<string> IfcSchemaProcessed = new HashSet<string>();
+            foreach (DirectoryInfo psd in combinedFolders)
             {
-               procPsetDef.ProcessSchemaPsetDef(schemaFolder, subDir, keywordsToProcess);
-            }
-            procPsetDef.ProcessSchemaPsetDef(schemaFolder, psd, keywordsToProcess);
-            IfcSchemaProcessed.Add(schemaFolder);
-         }
+               string schemaFolder = psd.FullName.Remove(0, textBox_PSDSourceDir.Text.Length + 1).Split('\\')[0];
 
-         // Collect all QtoSet definition for qto folders
-         keywordsToProcess = PsetOrQto.PsetOrQtoDefItems[PsetOrQtoSetEnum.QTOSET];
-         foreach (DirectoryInfo qto in combinedFolders)
-         {
-            string schemaFolder = qto.FullName.Remove(0, textBox_PSDSourceDir.Text.Length + 1).Split('\\')[0];
-
-            logF.WriteLine("\r\n*** Processing " + schemaFolder);
-            foreach (DirectoryInfo subDir in qto.GetDirectories())
-            {
-               procPsetDef.ProcessSchemaPsetDef(schemaFolder, subDir, keywordsToProcess);
-            }
-            procPsetDef.ProcessSchemaPsetDef(schemaFolder, qto, keywordsToProcess);
-         }
-
-         // Process IFC2x2/IFC2x3 QTO properties
-         foreach (string schemaName in IfcSchemaProcessed)
-         {
-            procPsetDef.ProcessPreIfc4QtoSets(schemaName);
-         }
-
-         // Process predefined properties
-         foreach (string schemaName in IfcSchemaProcessed)
-         {
-            logF.WriteLine("\r\n*** Processing " + schemaName);
-            procPsetDef.ProcessPredefinedPsets(schemaName);
-         }
-
-         // For testing purpose: Dump all the propertyset definition in a text file
-         if (checkBox_Dump.IsChecked.HasValue && checkBox_Dump.IsChecked.Value)
-         {
-            string pSetDump = "";
-            foreach (KeyValuePair<string, IList<VersionSpecificPropertyDef>> psetDefEntry in procPsetDef.allPDefDict)
-            {
-               pSetDump += "**** Property Set Name: " + psetDefEntry.Key;
-               foreach (VersionSpecificPropertyDef vPdef in psetDefEntry.Value)
+               logF.WriteLine("\r\n*** Processing " + schemaFolder);
+               foreach (DirectoryInfo subDir in psd.GetDirectories())
                {
-                  pSetDump += "\r\n  ===> IfcVersion: " + vPdef.IfcVersion;
-                  pSetDump += "\r\n" + vPdef.PropertySetDef.ToString() + "\r\n";
+                  procPsetDef.ProcessSchemaPsetDef(schemaFolder, subDir, keywordsToProcess);
                }
-               pSetDump += "\r\n\n";
+               procPsetDef.ProcessSchemaPsetDef(schemaFolder, psd, keywordsToProcess);
+               IfcSchemaProcessed.Add(schemaFolder);
             }
-            string dumpDir = Path.GetDirectoryName(textBox_OutputFile.Text);
-            string dumpFile = Path.GetFileNameWithoutExtension(textBox_OutputFile.Text) + ".txt";
-            string dumpFilePath = Path.Combine(dumpDir, dumpFile);
 
-            if (File.Exists(dumpFilePath))
-               File.Delete(dumpFilePath);
+            // Collect all QtoSet definition for qto folders
+            keywordsToProcess = PsetOrQto.PsetOrQtoDefItems[PsetOrQtoSetEnum.QTOSET];
+            foreach (DirectoryInfo qto in combinedFolders)
+            {
+               string schemaFolder = qto.FullName.Remove(0, textBox_PSDSourceDir.Text.Length + 1).Split('\\')[0];
 
-            StreamWriter tx = new StreamWriter(dumpFilePath);
-            tx.Write(pSetDump);
-            tx.Close();
+               logF.WriteLine("\r\n*** Processing " + schemaFolder);
+               foreach (DirectoryInfo subDir in qto.GetDirectories())
+               {
+                  procPsetDef.ProcessSchemaPsetDef(schemaFolder, subDir, keywordsToProcess);
+               }
+               procPsetDef.ProcessSchemaPsetDef(schemaFolder, qto, keywordsToProcess);
+            }
+
+            // Process IFC2x2/IFC2x3 QTO properties
+            foreach (string schemaName in IfcSchemaProcessed)
+            {
+               procPsetDef.ProcessPreIfc4QtoSets(schemaName);
+            }
+
+            // Process predefined properties
+            foreach (string schemaName in IfcSchemaProcessed)
+            {
+               logF.WriteLine("\r\n*** Processing " + schemaName);
+               procPsetDef.ProcessPredefinedPsets(schemaName);
+            }
+
+            // For testing purpose: Dump all the propertyset definition in a text file
+            if (checkBox_Dump.IsChecked.HasValue && checkBox_Dump.IsChecked.Value)
+            {
+               string pSetDump = "";
+               foreach (KeyValuePair<string, IList<VersionSpecificPropertyDef>> psetDefEntry in procPsetDef.allPDefDict)
+               {
+                  pSetDump += "**** Property Set Name: " + psetDefEntry.Key;
+                  foreach (VersionSpecificPropertyDef vPdef in psetDefEntry.Value)
+                  {
+                     pSetDump += "\r\n  ===> IfcVersion: " + vPdef.IfcVersion;
+                     pSetDump += "\r\n" + vPdef.PropertySetDef.ToString() + "\r\n";
+                  }
+                  pSetDump += "\r\n\n";
+               }
+               string dumpDir = Path.GetDirectoryName(textBox_OutputFile.Text);
+               string dumpFile = Path.GetFileNameWithoutExtension(textBox_OutputFile.Text) + ".txt";
+               string dumpFilePath = Path.Combine(dumpDir, dumpFile);
+
+               if (File.Exists(dumpFilePath))
+                  File.Delete(dumpFilePath);
+
+               StreamWriter tx = new StreamWriter(dumpFilePath);
+               tx.Write(pSetDump);
+               tx.Close();
+            }
+
+            IDictionary<string, int> groupParamDict = new Dictionary<string, int>();
+            string[] outFNameParts = outFileName.Split('_');
+
+            // Do it for the predefined propserty sets
+            string fNameToProcess = Path.Combine(dirName, outFNameParts[0] + "_PredefPset.cs");
+            if (File.Exists(fNameToProcess))
+               File.Delete(fNameToProcess);
+            StreamWriter outF = new StreamWriter(fNameToProcess);
+            // Group ID 1 and 2 are reserved
+            int offset = 3;
+            offset = WriteGeneratedCode(outF, procPsetDef, penumFileName, "Ifc", groupParamDict, offset);
+
+            // Do it for the predefined propserty sets
+            fNameToProcess = Path.Combine(dirName, outFNameParts[0] + "_PsetDef.cs");
+            if (File.Exists(fNameToProcess))
+               File.Delete(fNameToProcess);
+            outF = new StreamWriter(fNameToProcess);
+            offset = WriteGeneratedCode(outF, procPsetDef, penumFileName, "Pset", groupParamDict, offset);
+
+            // Do it for the predefined propserty sets
+            fNameToProcess = Path.Combine(dirName, outFNameParts[0] + "_QsetDef.cs");
+            if (File.Exists(fNameToProcess))
+               File.Delete(fNameToProcess);
+            outF = new StreamWriter(fNameToProcess);
+            offset = WriteGeneratedCode(outF, procPsetDef, penumFileName, "Qto", groupParamDict, offset);
+
+            // Close the Enum files
+            procPsetDef.endWriteEnumFile();
+            WriteRevitSharedParam(stSharedPar, existingParDict, groupParamDict, false, out IList<string> deferredParList);
+            AppendDeferredParamList(stSharedPar, deferredParList);
+            stSharedPar.Close();
+
+            WriteRevitSharedParam(stSharedParType, existingTypeParDict, groupParamDict, true, out IList<string> deferredParTypeList);
+            AppendDeferredParamList(stSharedParType, deferredParTypeList);
+
+            textBox_OutputMsg.Text = "Processing completed successfully.";
          }
-
-         IDictionary<string, int> groupParamDict = new Dictionary<string, int>();
-         string[] outFNameParts = outFileName.Split('_');
-
-         // Do it for the predefined propserty sets
-         string fNameToProcess = Path.Combine(dirName, outFNameParts[0] + "_PredefPset.cs");
-         if (File.Exists(fNameToProcess))
-            File.Delete(fNameToProcess);
-         StreamWriter outF = new StreamWriter(fNameToProcess);
-         // Group ID 1 and 2 are reserved
-         int offset = 3;
-         offset = WriteGeneratedCode(outF, procPsetDef, penumFileName, "Ifc", groupParamDict, offset);
-
-         // Do it for the predefined propserty sets
-         fNameToProcess = Path.Combine(dirName, outFNameParts[0] + "_PsetDef.cs");
-         if (File.Exists(fNameToProcess))
-            File.Delete(fNameToProcess);
-         outF = new StreamWriter(fNameToProcess);
-         offset = WriteGeneratedCode(outF, procPsetDef, penumFileName, "Pset", groupParamDict, offset);
-
-         // Do it for the predefined propserty sets
-         fNameToProcess = Path.Combine(dirName, outFNameParts[0] + "_QsetDef.cs");
-         if (File.Exists(fNameToProcess))
-            File.Delete(fNameToProcess);
-          outF = new StreamWriter(fNameToProcess);
-         offset = WriteGeneratedCode(outF, procPsetDef, penumFileName, "Qto", groupParamDict, offset);
-
-         // Close the Enum files
-         procPsetDef.endWriteEnumFile();
-         WriteRevitSharedParam(stSharedPar, existingParDict, groupParamDict, false, out IList<string> deferredParList);
-         AppendDeferredParamList(stSharedPar, deferredParList);
-         stSharedPar.Close();
-
-         WriteRevitSharedParam(stSharedParType, existingTypeParDict, groupParamDict, true, out IList<string> deferredParTypeList);
-         AppendDeferredParamList(stSharedParType, deferredParTypeList);
-         stSharedParType.Close();
-         logF.Close();
+         catch (Exception ex)
+         {
+            string errorMessage = $"Error during processing: {ex.Message}";
+            logF?.WriteLine($"\r\n*** ERROR: {errorMessage}");
+            logF?.WriteLine($"Stack trace: {ex.StackTrace}");
+            
+            textBox_OutputMsg.Text = errorMessage;
+            System.Windows.MessageBox.Show(errorMessage, "Processing Error", MessageBoxButton.OK, MessageBoxImage.Error);
+         }
+         finally
+         {
+            // Ensure all resources are properly closed
+            try { stSharedPar?.Close(); } catch { }
+            try { stSharedParType?.Close(); } catch { }
+            try { logF?.Close(); } catch { }
+         }
       }
 
       void WriteRevitSharedParam(StreamWriter stSharedPar, IDictionary<string, SharedParameterDef> existingParDict, 
@@ -549,7 +568,9 @@ namespace RevitIFCTools
                   //   outF.WriteLine("            {0}.PredefinedType = \"{1}\";", varName, vspecPDef.PropertySetDef.PredefinedType);
                }
                else if (vspecPDef.SchemaFileVersion.Equals("IFC4x3", StringComparison.CurrentCultureIgnoreCase)
-                  || vspecPDef.IfcVersion.Equals("IFC4X3_TC1", StringComparison.CurrentCultureIgnoreCase))
+                  || vspecPDef.SchemaFileVersion.Equals("IFC4x3_ADD2", StringComparison.CurrentCultureIgnoreCase)
+
+)
                {
                   outF.WriteLine("         if (ExporterCacheManager.ExportOptionsCache.ExportAs4x3 && certifiedEntityAndPsetList." + certificationCheckName + "(ExporterCacheManager.ExportOptionsCache.FileVersion.ToString().ToUpper(), \"" + psetName + "\"))");
                   outF.WriteLine("         {");

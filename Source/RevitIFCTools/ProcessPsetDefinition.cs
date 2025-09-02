@@ -1133,16 +1133,34 @@ namespace RevitIFCTools
 
       public void ProcessSchemaPsetDef(string schemaName, DirectoryInfo psdFolder, Dictionary<ItemsInPsetQtoDefs, string> psetOrQtoSet)
       {
+         // Check if this is a lexical folder (contains HTML files)
+         bool isLexicalFolder = psdFolder.Name.Equals("lexical", StringComparison.InvariantCultureIgnoreCase);
+         
          if (psetOrQtoSet[ItemsInPsetQtoDefs.PropertySetOrQtoSetDef].Equals("PropertySetDef"))
          {
-            foreach (FileInfo file in psdFolder.GetFiles("Pset_*.xml"))
+            if (isLexicalFolder)
             {
-               PropertySet.PsetDefinition psetD = Process(schemaName, file, psetOrQtoSet);
-               AddPsetDefToDict(schemaName, psetD);
+               // Use HTML parser for lexical folders
+               HtmlPsetDefinitionParser htmlParser = new HtmlPsetDefinitionParser(logF);
+               foreach (FileInfo file in psdFolder.GetFiles("Pset_*.htm"))
+               {
+                  PropertySet.PsetDefinition psetD = htmlParser.ProcessHtmlFile(schemaName, file, psetOrQtoSet);
+                  AddPsetDefToDict(schemaName, psetD);
+               }
+            }
+            else
+            {
+               // Use existing XML processing
+               foreach (FileInfo file in psdFolder.GetFiles("Pset_*.xml"))
+               {
+                  PropertySet.PsetDefinition psetD = Process(schemaName, file, psetOrQtoSet);
+                  AddPsetDefToDict(schemaName, psetD);
+               }
             }
          }
          else if (psetOrQtoSet[ItemsInPsetQtoDefs.PropertySetOrQtoSetDef].Equals("QtoSetDef"))
          {
+            // Use existing XML processing for QTO sets (no HTML parsing needed yet)
             foreach (FileInfo file in psdFolder.GetFiles("Qto_*.xml"))
             {
                PropertySet.PsetDefinition psetD = Process(schemaName, file, psetOrQtoSet);
