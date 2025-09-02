@@ -104,7 +104,8 @@ namespace RevitIFCTools
          if (string.IsNullOrEmpty(textBox_PSDSourceDir.Text) || string.IsNullOrEmpty(textBox_OutputFile.Text))
             return;
 
-         var psdFolders = new DirectoryInfo(textBox_PSDSourceDir.Text).GetDirectories("psd", SearchOption.AllDirectories);
+         var psdFolders = GetPsdOrLexicalFolders(textBox_PSDSourceDir.Text);
+         
          var qtoFolders = new DirectoryInfo(textBox_PSDSourceDir.Text).GetDirectories("qto", SearchOption.AllDirectories);
          var combinedFolders = psdFolders.Concat(qtoFolders);
 
@@ -653,6 +654,38 @@ namespace RevitIFCTools
          if (!string.IsNullOrEmpty(textBox_PSDSourceDir.Text) && !string.IsNullOrEmpty(textBox_OutputFile.Text)
             && !string.IsNullOrEmpty(textBox_SharedParFile.Text) && !string.IsNullOrEmpty(textBox_ShParFileType.Text))
             button_Go.IsEnabled = true;
+      }
+
+      /// <summary>
+      /// Searches for PSD or Lexical folders in the specified source directory.
+      /// First looks for 'psd' folders in each first-level subfolder, 
+      /// then falls back to 'lexical' folders if 'psd' is not found.
+      /// </summary>
+      /// <param name="sourceDirectoryPath">The root directory path to search in</param>
+      /// <returns>List of DirectoryInfo objects for found psd or lexical folders</returns>
+      private List<DirectoryInfo> GetPsdOrLexicalFolders(string sourceDirectoryPath)
+      {
+         var psdFolders = new List<DirectoryInfo>();
+         var sourceDir = new DirectoryInfo(sourceDirectoryPath);
+
+         foreach (DirectoryInfo firstLevelSubfolder in sourceDir.GetDirectories())
+         {
+            DirectoryInfo psdDir = firstLevelSubfolder.GetDirectories("psd").FirstOrDefault();
+            if (psdDir != null)
+            {
+               psdFolders.Add(psdDir);
+            }
+            else
+            {
+               DirectoryInfo lexicalDir = firstLevelSubfolder.GetDirectories("lexical", SearchOption.AllDirectories).FirstOrDefault();
+               if (lexicalDir != null)
+               {
+                  psdFolders.Add(lexicalDir);
+               }
+            }
+         }
+
+         return psdFolders;
       }
    }
 }
