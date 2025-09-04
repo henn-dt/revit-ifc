@@ -62,7 +62,7 @@ namespace Revit.IFC.Export.Exporter.PropertySet
          AddEntry("WallCovering", BuiltInParameter.ROOM_FINISH_WALL);
          AddEntry("FloorCovering", BuiltInParameter.ROOM_FINISH_FLOOR);
          AddEntry("FireRating", BuiltInParameter.FIRE_RATING);
-         //AddEntry("ThermalTransmittance", BuiltInParameter.ANALYTICAL_HEAT_TRANSFER_COEFFICIENT);
+         AddEntry("ThermalTransmittance", BuiltInParameter.ANALYTICAL_HEAT_TRANSFER_COEFFICIENT);
       }
 
       static private IDictionary<KeyValuePair<string, string>, BuiltInParameter> BuiltInSpecificParameterMapping

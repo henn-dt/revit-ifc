@@ -3572,8 +3572,8 @@ namespace Revit.IFC.Export.Exporter
          IList<double> measure2d = new List<double>();
          measure2d.Add(0.0); measure2d.Add(0.0);
          origin2d = IFCInstanceExporter.CreateCartesianPoint(file, measure2d);
-         //ExporterIFCUtils.SetGlobal3DOriginHandle(origin);
-       //  ExporterIFCUtils.SetGlobal2DOriginHandle(origin2d);
+         ExporterIFCUtils.SetGlobal3DOriginHandle(origin);
+         ExporterIFCUtils.SetGlobal2DOriginHandle(origin2d);
       }
 
       private static bool ValidateContainedHandle(IFCAnyHandle initialHandle)

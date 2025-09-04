@@ -277,13 +277,13 @@ namespace Revit.IFC.Export.Utility
                {
                   if (!MathUtil.IsAlmostZero(cleanList[(ii + 1) % 3]) || !MathUtil.IsAlmostZero(cleanList[(ii + 2) % 3]))
                      break;
-                  //return ExporterIFCUtils.GetGlobal3DDirectionHandles(true)[ii];
+                  return ExporterIFCUtils.GetGlobal3DDirectionHandles(true)[ii];
                }
                else if (MathUtil.IsAlmostEqual(cleanList[ii], -1.0))
                {
                   if (!MathUtil.IsAlmostZero(cleanList[(ii + 1) % 3]) || !MathUtil.IsAlmostZero(cleanList[(ii + 2) % 3]))
                      break;
-                  //return ExporterIFCUtils.GetGlobal3DDirectionHandles(false)[ii];
+                  return ExporterIFCUtils.GetGlobal3DDirectionHandles(false)[ii];
                }
             }
          }
@@ -295,13 +295,13 @@ namespace Revit.IFC.Export.Utility
                {
                   if (!MathUtil.IsAlmostZero(cleanList[1 - ii]))
                      break;
-                  //return ExporterIFCUtils.GetGlobal2DDirectionHandles(true)[ii];
+                  return ExporterIFCUtils.GetGlobal2DDirectionHandles(true)[ii];
                }
                else if (MathUtil.IsAlmostEqual(cleanList[ii], -1.0))
                {
                   if (!MathUtil.IsAlmostZero(cleanList[1 - ii]))
                      break;
-                 // return ExporterIFCUtils.GetGlobal2DDirectionHandles(false)[ii];
+                  return ExporterIFCUtils.GetGlobal2DDirectionHandles(false)[ii];
                }
             }
          }
@@ -672,8 +672,8 @@ namespace Revit.IFC.Export.Utility
       /// </remarks>
       public static Transform GetRelativePlacementOffsetTransformWithoutDirFix(ExporterIFC exporterIFC, IFCAnyHandle originalPlacement, IFCAnyHandle newPlacement)
       {
-         Transform originalTrf = null;//ExporterIFCUtils.GetUnscaledTransformWithoutFixOfDirection(exporterIFC, originalPlacement);
-         Transform newTrf = null; //ExporterIFCUtils.GetUnscaledTransformWithoutFixOfDirection(exporterIFC, newPlacement);
+         Transform originalTrf = ExporterIFCUtils.GetUnscaledTransformWithoutFixOfDirection(exporterIFC, originalPlacement);
+         Transform newTrf = ExporterIFCUtils.GetUnscaledTransformWithoutFixOfDirection(exporterIFC, newPlacement);
 
          Transform resultTrf = new Transform(Transform.Identity);
          

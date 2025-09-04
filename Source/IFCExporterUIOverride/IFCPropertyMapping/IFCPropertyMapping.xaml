@@ -226,6 +226,7 @@
          </DockPanel>
       </Border>
       <StackPanel Orientation="Horizontal" Grid.Row="1" Grid.ColumnSpan="2" VerticalAlignment="Center">
+         <ctrl:WeaveIcon RegularIcon="Info" VerticalAlignment="Top"/>
          <TextBlock Name="textBlock_Help" HorizontalAlignment="Left" VerticalAlignment="Center">
             <Hyperlink>
                <Run Name="run_Help" Text="{x:Static p:Resources.ParameterMappingHelp}" x:Uid="LearnMoreHyperlink"/>

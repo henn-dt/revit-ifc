@@ -1176,7 +1176,7 @@ namespace Revit.IFC.Export.Exporter
                   // Apply only when the familyInstance tranformation normal is vertical.
                   if (MathUtil.IsAlmostEqual(Math.Abs(trf.BasisZ.DotProduct(XYZ.BasisZ)), 1.0))
                   {
-                     XYZ familyInstanceAssemblyOffset = null;// exporterIFC.GetFamilyInstanceAssemblyOffset(familyInstance);
+                     XYZ familyInstanceAssemblyOffset = exporterIFC.GetFamilyInstanceAssemblyOffset(familyInstance);
                      newOffset += (trf.BasisZ.Z > MathUtil.Eps()) ?
                         familyInstanceAssemblyOffset.Z : -familyInstanceAssemblyOffset.Z;
                   }

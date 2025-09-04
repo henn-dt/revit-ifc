@@ -322,7 +322,7 @@
       </Grid>
 
       <StackPanel Orientation="Horizontal" Grid.Row="1" Grid.ColumnSpan="2" VerticalAlignment="Center">
-         
+         <ctrl:WeaveIcon RegularIcon="Info" VerticalAlignment="Top" Margin="0,0,5,0"/>
          <TextBlock Name="textBlock_Help" HorizontalAlignment="Left" >
          <Hyperlink Click="OnHelpClick">
             <Run Name="run_Help" Text="{x:Static p:Resources.CategoryMappingHelp}" x:Uid="LearnMoreHyperlink"/>
