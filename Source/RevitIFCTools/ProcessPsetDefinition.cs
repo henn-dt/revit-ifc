@@ -65,6 +65,12 @@ namespace RevitIFCTools
 
    public class ProcessPsetDefinition
    {
+      // File patterns for property set definitions
+      private const string PSET_HTM_PATTERN = "Pset_*.htm";
+      private const string PSET_XML_PATTERN = "Pset_*.xml";
+      private const string QTO_HTM_PATTERN = "Qto_*.htm";
+      private const string QTO_XML_PATTERN = "Qto_*.xml";
+      
       IDictionary<string, StreamWriter> enumFileDict;
       IDictionary<string, IList<string>> enumDict;
       public SortedDictionary<string, IList<VersionSpecificPropertyDef>> allPDefDict { get; private set; } = new SortedDictionary<string, IList<VersionSpecificPropertyDef>>();
@@ -1146,47 +1152,46 @@ namespace RevitIFCTools
          return applTypeStr[applTypeStr.Count() - 1].Replace("\"", "").TrimEnd(',');
       }
 
+      /// <summary>
+      /// Process HTML files (Pset_*.htm or Qto_*.htm) from lexical folders
+      /// </summary>
+      private void ProcessHtmlFiles(string schemaName, DirectoryInfo psdFolder, Dictionary<ItemsInPsetQtoDefs, string> psetOrQtoSet)
+      {
+         var htmlParser = new HtmlPsetDefinitionParser(logF);
+         string pattern = psetOrQtoSet[ItemsInPsetQtoDefs.PropertySetOrQtoSetDef].Equals("PropertySetDef") 
+            ? PSET_HTM_PATTERN : QTO_HTM_PATTERN;
+         
+         foreach (FileInfo file in psdFolder.GetFiles(pattern))
+         {
+            PropertySet.PsetDefinition psetD = htmlParser.ProcessHtmlFile(schemaName, file, psetOrQtoSet);
+            AddPsetDefToDict(schemaName, psetD);
+         }
+      }
+
+      /// <summary>
+      /// Process XML files (Pset_*.xml or Qto_*.xml) from psd folders
+      /// </summary>
+      private void ProcessXmlFiles(string schemaName, DirectoryInfo psdFolder, Dictionary<ItemsInPsetQtoDefs, string> psetOrQtoSet)
+      {
+         string pattern = psetOrQtoSet[ItemsInPsetQtoDefs.PropertySetOrQtoSetDef].Equals("PropertySetDef") 
+            ? PSET_XML_PATTERN : QTO_XML_PATTERN;
+         
+         foreach (FileInfo file in psdFolder.GetFiles(pattern))
+         {
+            PropertySet.PsetDefinition psetD = Process(schemaName, file, psetOrQtoSet);
+            AddPsetDefToDict(schemaName, psetD);
+         }
+      }
+
       public void ProcessSchemaPsetDef(string schemaName, DirectoryInfo psdFolder, Dictionary<ItemsInPsetQtoDefs, string> psetOrQtoSet)
       {
-         // File patterns for property set definitions
-         const string PSET_HTM_PATTERN = "Pset_*.htm";
-         const string PSET_XML_PATTERN = "Pset_*.xml";
-         const string QTO_XML_PATTERN = "Qto_*.xml";
-         
          // Check if this is a lexical folder (contains HTML files)
          bool isLexicalFolder = psdFolder.Name.Equals("lexical", StringComparison.InvariantCultureIgnoreCase);
          
-         if (psetOrQtoSet[ItemsInPsetQtoDefs.PropertySetOrQtoSetDef].Equals("PropertySetDef"))
-         {
-            if (isLexicalFolder)
-            {
-               // Use HTML parser for lexical folders
-               HtmlPsetDefinitionParser htmlParser = new HtmlPsetDefinitionParser(logF);
-               foreach (FileInfo file in psdFolder.GetFiles(PSET_HTM_PATTERN))
-               {
-                  PropertySet.PsetDefinition psetD = htmlParser.ProcessHtmlFile(schemaName, file, psetOrQtoSet);
-                  AddPsetDefToDict(schemaName, psetD);
-               }
-            }
-            else
-            {
-               // Use existing XML processing
-               foreach (FileInfo file in psdFolder.GetFiles(PSET_XML_PATTERN))
-               {
-                  PropertySet.PsetDefinition psetD = Process(schemaName, file, psetOrQtoSet);
-                  AddPsetDefToDict(schemaName, psetD);
-               }
-            }
-         }
-         else if (psetOrQtoSet[ItemsInPsetQtoDefs.PropertySetOrQtoSetDef].Equals("QtoSetDef"))
-         {
-            // Use existing XML processing for QTO sets (no HTML parsing needed yet)
-            foreach (FileInfo file in psdFolder.GetFiles(QTO_XML_PATTERN))
-            {
-               PropertySet.PsetDefinition psetD = Process(schemaName, file, psetOrQtoSet);
-               AddPsetDefToDict(schemaName, psetD);
-            }
-         }
+         if (isLexicalFolder)
+            ProcessHtmlFiles(schemaName, psdFolder, psetOrQtoSet);
+         else
+            ProcessXmlFiles(schemaName, psdFolder, psetOrQtoSet);
       }
 
       public void ProcessPreIfc4QtoSets(string schemaName)

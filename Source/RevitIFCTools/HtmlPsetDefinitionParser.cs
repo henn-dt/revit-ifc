@@ -58,7 +58,7 @@ namespace RevitIFCTools
             PsetDefinition pset = new PsetDefinition();
             
             // Extract core data
-            pset.Name = ExtractPsetName(htmlContent);
+            pset.Name = ExtractSetName(htmlContent);
             pset.IfcVersion = NormalizeIfcVersion(ExtractIfcVersionFromHeader(htmlContent));
             
             // Extract applicable classes and predefined types
@@ -79,14 +79,15 @@ namespace RevitIFCTools
       }
 
       /// <summary>
-      /// Extract Property Set name from HTML h1 tag
+      /// Extract Set name from HTML h1 tag (Pset_ or Qto_)
       /// </summary>
-      private string ExtractPsetName(string htmlContent)
+      private string ExtractSetName(string htmlContent)
       {
-         var match = Regex.Match(htmlContent, @"<h1[^>]*>.*?(Pset_\w+)</h1>", RegexOptions.Singleline);
+         // Pattern: <h1>7.2.5.1 Qto_ActuatorBaseQuantities</h1> or <h1>6.1.4.23 Pset_WallCommon</h1>
+         var match = Regex.Match(htmlContent, @"<h1[^>]*>.*?(Pset_\w+|Qto_\w+)</h1>", RegexOptions.Singleline);
          if (!match.Success)
          {
-            throw new Exception("Property Set name not found in HTML h1 tag");
+            throw new Exception("Property Set or QTO Set name not found in HTML h1 tag");
          }
          return match.Groups[1].Value;
       }
@@ -96,6 +97,7 @@ namespace RevitIFCTools
       /// </summary>
       private string ExtractIfcVersionFromHeader(string htmlContent)
       {
+         // Pattern: <header><p>IFC 4.3.2.0 (IFC4X3_ADD2)</p>
          var headerMatch = Regex.Match(htmlContent, @"<header>.*?<p>(.*?)\s*\(([^)]+)\)", RegexOptions.Singleline);
          if (headerMatch.Success)
          {
@@ -151,7 +153,7 @@ namespace RevitIFCTools
             throw new Exception("Applicable entities section not found");
          }
          
-         // Extract class links: <a href="IfcWall.htm">IfcWall</a> or <a href="IfcCableSegment.htm">IfcCableSegment</a>/CORESEGMENT
+         // Pattern: <li><a href="IfcWall.htm">IfcWall</a></li> or <li><a href="IfcCableSegment.htm">IfcCableSegment</a>/CORESEGMENT</li>
          var matches = Regex.Matches(section, @"<li><a href=""(\w+)\.htm"">(\w+)</a>(?:/(\w+))?</li>", RegexOptions.Singleline);
          
          var allClassNames = new List<string>();
@@ -225,7 +227,7 @@ namespace RevitIFCTools
             return null;
          }
          
-         // Extract table from properties section
+         // Pattern: <table>...</table>
          var tableMatch = Regex.Match(propertiesSection, @"<table[^>]*>(.*?)</table>", RegexOptions.Singleline);
          return tableMatch.Success ? tableMatch.Groups[1].Value : null;
       }
@@ -237,14 +239,14 @@ namespace RevitIFCTools
       {
          var rows = new List<string>();
          
-         // Find tbody section
+         // Pattern: <tbody>...</tbody>
          var tbodyMatch = Regex.Match(tableHtml, @"<tbody[^>]*>(.*?)</tbody>", RegexOptions.Singleline);
          if (!tbodyMatch.Success)
          {
             return rows;
          }
          
-         // Extract individual rows
+         // Pattern: <tr>...</tr>
          var rowMatches = Regex.Matches(tbodyMatch.Groups[1].Value, @"<tr[^>]*>(.*?)</tr>", RegexOptions.Singleline);
          foreach (Match match in rowMatches)
          {
@@ -260,9 +262,15 @@ namespace RevitIFCTools
       private PsetProperty ParsePropertyRow(string rowHtml, string folderPath, Dictionary<ItemsInPsetQtoDefs, string> psetOrQtoSet)
       {
          var cells = ExtractTableCells(rowHtml);
-         if (cells.Count < 4)
+         bool isQtoSet = psetOrQtoSet[ItemsInPsetQtoDefs.PropertySetOrQtoSetDef].Equals("QtoSetDef");
+         
+         // QTO format: Name | Data Type | Description (3 cells)
+         // Pset format: Name | Property Type | Data Type | Description (4 cells)
+         int expectedCells = isQtoSet ? 3 : 4;
+         
+         if (cells.Count < expectedCells)
          {
-            throw new Exception("Property row has insufficient cells (expected 4, found " + cells.Count + ")");
+            throw new Exception($"Property row has insufficient cells (expected {expectedCells}, found {cells.Count})");
          }
          
          try
@@ -271,11 +279,20 @@ namespace RevitIFCTools
             
             // Extract basic property data
             prop.Name = StripHtmlTags(cells[0]).Trim();
-            string propertyType = ExtractPropertyTypeLink(cells[1]);
-            string dataType = ExtractDataTypeLink(cells[2]);
             
-            // Map property type
-            prop.PropertyType = MapPropertyType(propertyType, dataType, folderPath, psetOrQtoSet);
+            if (isQtoSet)
+            {
+               // QTO format: Name | Data Type | Description
+               string quantityType = ExtractDataTypeLink(cells[1]); // IfcQuantityLength, etc.
+               prop.PropertyType = MapQuantityType(quantityType);
+            }
+            else
+            {
+               // Pset format: Name | Property Type | Data Type | Description
+               string propertyType = ExtractPropertyTypeLink(cells[1]);
+               string dataType = ExtractDataTypeLink(cells[2]);
+               prop.PropertyType = MapPropertyType(propertyType, dataType, folderPath, psetOrQtoSet);
+            }
             
             return prop;
          }
@@ -291,6 +308,7 @@ namespace RevitIFCTools
       private List<string> ExtractTableCells(string rowHtml)
       {
          var cells = new List<string>();
+         // Pattern: <td>...</td>
          var cellMatches = Regex.Matches(rowHtml, @"<td[^>]*>(.*?)</td>", RegexOptions.Singleline);
          
          foreach (Match match in cellMatches)
@@ -306,6 +324,7 @@ namespace RevitIFCTools
       /// </summary>
       private string ExtractPropertyTypeLink(string cellHtml)
       {
+         // Pattern: <a href="IfcPropertySingleValue.htm">IfcPropertySingleValue</a>
          var match = Regex.Match(cellHtml, @"<a href=""(\w+)\.htm"">(\w+)</a>");
          return match.Success ? match.Groups[2].Value : null;
       }
@@ -315,7 +334,7 @@ namespace RevitIFCTools
       /// </summary>
       private string ExtractDataTypeLink(string cellHtml)
       {
-         // Handle compound types like: <a href="IfcPowerMeasure.htm">IfcPowerMeasure</a>/<a href="IfcThermodynamicTemperatureMeasure.htm">IfcThermodynamicTemperatureMeasure</a>
+         // Pattern: <a href="IfcPowerMeasure.htm">IfcPowerMeasure</a> or <a href="Type1.htm">Type1</a>/<a href="Type2.htm">Type2</a>
          var matches = Regex.Matches(cellHtml, @"<a href=""(\w+)\.htm"">(\w+)</a>");
          
          if (matches.Count == 1)
@@ -330,6 +349,42 @@ namespace RevitIFCTools
          }
          
          throw new Exception("Data type not found in HTML table cell");
+      }
+
+      /// <summary>
+      /// Map HTML quantity type to internal PropertyDataType (for QTO files)
+      /// </summary>
+      private PropertyDataType MapQuantityType(string htmlQuantityType)
+      {
+         if (string.IsNullOrEmpty(htmlQuantityType))
+         {
+            throw new Exception("Quantity type not found in HTML table cell");
+         }
+
+         switch (htmlQuantityType.ToLower())
+         {
+            case "ifcquantitylength":
+               return new PropertySingleValue { DataType = "IfcLengthMeasure" };
+               
+            case "ifcquantityarea":
+               return new PropertySingleValue { DataType = "IfcAreaMeasure" };
+               
+            case "ifcquantityvolume":
+               return new PropertySingleValue { DataType = "IfcVolumeMeasure" };
+               
+            case "ifcquantityweight":
+               return new PropertySingleValue { DataType = "IfcMassMeasure" };
+               
+            case "ifcquantitycount":
+               return new PropertySingleValue { DataType = "IfcCountMeasure" };
+               
+            case "ifcquantitytime":
+               return new PropertySingleValue { DataType = "IfcTimeMeasure" };
+               
+            default:
+               // Default fallback
+               return new PropertySingleValue { DataType = "IfcLabel" };
+         }
       }
 
       /// <summary>
@@ -408,7 +463,7 @@ namespace RevitIFCTools
             string htmlContent = File.ReadAllText(enumFilePath);
             var enumItems = new List<PropertyEnumItem>();
             
-            // Extract enum values from <code> tags in table
+            // Pattern: <td><code>BLACK</code></td>
             var matches = Regex.Matches(htmlContent, @"<td[^>]*><code>([^<]+)</code>");
             
             foreach (Match match in matches)
@@ -460,10 +515,7 @@ namespace RevitIFCTools
       /// </summary>
       private string ExtractSection(string htmlContent, string sectionTitle)
       {
-         // 4x3_add2_example_htm multi-line format:
-         // <h2><a class="anchor" id="[ID]-Properties"></a>
-         //     [NUMBER] Properties
-         // <a class="link" href="..."><i data-feather="link"></i></a></h2>
+         // Pattern: <h2><a class="anchor" id="7.2.5.1.3-Properties"></a> 7.2.5.1.3 Properties <a class="link">...</a></h2>
          var pattern = $@"<h2><a class=""anchor""[^>]*></a>\s*[\d\.]+\s+{Regex.Escape(sectionTitle)}\s*<a class=""link""[^>]*>.*?</h2>(.*?)(?=<h2|</div>|$)";
          var match = Regex.Match(htmlContent, pattern, RegexOptions.Singleline | RegexOptions.IgnoreCase);
          
@@ -475,6 +527,7 @@ namespace RevitIFCTools
       /// </summary>
       private string StripHtmlTags(string html)
       {
+         // Pattern: <tag> or <tag attribute="value">
          return Regex.Replace(html, @"<[^>]+>", "").Trim();
       }
    }
