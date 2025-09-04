@@ -173,7 +173,7 @@ namespace RevitIFCTools
          // Set ApplicableType and PredefinedType (following XML parser logic)
          if (allClassNames.Count > 0)
          {
-            applicableType = string.Join(",", allClassNames);
+            applicableType = allClassNames[0]; // Use only the first class name, ignore others
          }
          
          if (predefinedTypes.Count > 0)
